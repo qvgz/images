@@ -65,6 +65,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: "{{defaultContext}}:xray"
+          build-args: VERSION=${{ env.VERSION }}
           file: ./Dockerfile
           push: true
           tags: |
@@ -94,6 +95,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: "{{defaultContext}}:supervisord"
+          build-args: VERSION=${{ env.VERSION }}
           file: ./Dockerfile
           push: true
           tags: |

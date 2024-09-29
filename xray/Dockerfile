@@ -1,10 +1,12 @@
 FROM golang:alpine
 
+ARG VERSION
+
 WORKDIR /tmp/xray
 
 RUN set -eux \
     ; apk add --no-cache git \
-    && git clone https://github.com/XTLS/Xray-core.git . \
+    && git clone --branch ${VERSION} --single-branch https://github.com/XTLS/Xray-core.git . \
     && go build -o xray -trimpath -ldflags "-s -w -buildid=" ./main
 
 FROM alpine:latest
