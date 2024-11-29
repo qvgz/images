@@ -9,7 +9,6 @@
 
 添加插件如下：
 + [Cloudflare module for Caddy](https://github.com/caddy-dns/cloudflare)
-+ [Caddy HTTP Rate Limit Module](https://github.com/mholt/caddy-ratelimit)
 
 参考：
 [caddy-docker](https://github.com/caddyserver/caddy-docker/tree/master)
