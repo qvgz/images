@@ -40,37 +40,6 @@ jobs:
           tags: |
             qvgz/caddy:latest
             qvgz/caddy:${{ env.VERSION }}
-
-  xray:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set GITHUB_ENV
-        run: |
-          echo "VERSION=$(curl --silent "https://api.github.com/repos/XTLS/Xray-core/releases/latest" | jq -r .tag_name)" >> $GITHUB_ENV
-          echo "DOCKER_HUB_TAG=$(curl --silent https://registry.hub.docker.com/v2/repositories/qvgz/xray/tags | jq -r '.results | .[1] | .name')" >> $GITHUB_ENV
-
-      - name: Set up Docker Buildx
-        if: ${{ env.VERSION != env.DOCKER_HUB_TAG }}
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to DockerHub
-        if: ${{ env.VERSION != env.DOCKER_HUB_TAG }}
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push
-        if: ${{ env.VERSION != env.DOCKER_HUB_TAG }}
-        uses: docker/build-push-action@v6
-        with:
-          context: "{{defaultContext}}:xray"
-          build-args: VERSION=${{ env.VERSION }}
-          file: ./Dockerfile
-          push: true
-          tags: |
-            qvgz/xray:latest
-            qvgz/xray:${{ env.VERSION }}
   supervisord:
     runs-on: ubuntu-latest
     steps:
