@@ -7,8 +7,7 @@ WORKDIR /tmp/xcaddy
 RUN set -eux \
     ; go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest \
     && /go/bin/xcaddy build \
-    --with github.com/caddy-dns/cloudflare \
-    --with github.com/caddyserver/forwardproxy@caddy2=github.com/klzgrad/forwardproxy@naive 
+    --with github.com/caddy-dns/cloudflare
 
 FROM alpine:latest
 
