@@ -9,7 +9,7 @@
 
 添加插件如下：
 + [Cloudflare module for Caddy](https://github.com/caddy-dns/cloudflare)
-+ [Project Conncept: a TCP/UDP app for Caddy](https://github.com/mholt/caddy-l4)
++ [NaïveProxy](https://github.com/klzgrad/naiveproxy)
 
 参考：
 [caddy-docker](https://github.com/caddyserver/caddy-docker/tree/master)
