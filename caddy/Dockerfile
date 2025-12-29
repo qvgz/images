@@ -8,7 +8,9 @@ RUN CGO_ENABLED=0 GOOS= GOARCH= go install github.com/caddyserver/xcaddy/cmd/xca
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH /go/bin/xcaddy build ${VERSION} \
     --output /usr/bin/caddy \
     --with github.com/caddy-dns/cloudflare \
-    --with github.com/caddyserver/forwardproxy=github.com/klzgrad/forwardproxy@naive
+    --with github.com/caddy-dns/godaddy \
+    --with github.com/caddy-dns/alidns \
+    --with github.com/caddy-dns/dnspod
 
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates mailcap libcap tzdata
