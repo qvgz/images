@@ -1,18 +1,15 @@
-FROM golang:alpine AS builder
-
+FROM --platform=$BUILDPLATFORM golang:alpine AS builder
 ARG VERSION
+ARG TARGETOS
+ARG TARGETARCH
+ENV CGO_ENABLED=0 \
+    GOOS=$TARGETOS \
+    GOARCH=$TARGETARCH
+WORKDIR /src
+RUN apk add --no-cache git
+RUN git clone --branch ${VERSION} --depth 1 https://github.com/ochinchina/supervisord.git .
+RUN go build -trimpath -buildvcs=false -ldflags="-s -w -buildid= -X main.Version=${VERSION}" -o /usr/local/bin/supervisord .
 
-RUN apk add --no-cache --update git gcc rust
-
-WORKDIR /supervisord
-
-RUN set -eux \
-    ; apk add --no-cache git \
-    && git clone --branch ${VERSION} --single-branch https://github.com/ochinchina/supervisord.git . \
-    && go build -o /usr/local/bin/supervisord -trimpath -ldflags "-s -w -buildid=" github.com/ochinchina/supervisord
-
-FROM alpine
-
+FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=builder /usr/local/bin/supervisord /usr/local/bin/supervisord
-
 ENTRYPOINT ["/usr/local/bin/supervisord"]
