@@ -6,18 +6,17 @@ WORKDIR /build
 RUN apk add --no-cache git
 RUN CGO_ENABLED=0 GOOS= GOARCH= go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH /go/bin/xcaddy build ${VERSION} \
-    --output /usr/bin/caddy \
-    --with github.com/caddy-dns/cloudflare \
-    --with github.com/caddy-dns/godaddy \
-    --with github.com/caddy-dns/alidns \
-    --with github.com/caddy-dns/dnspod
+  --output /usr/bin/caddy \
+  --with github.com/caddy-dns/cloudflare \
+  --with github.com/caddy-dns/godaddy \
+  --with github.com/caddy-dns/alidns
 
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates mailcap libcap tzdata
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
 RUN set -eux; \
-    mkdir -p /config/caddy /data/caddy /etc/caddy /usr/share/caddy; \
-    setcap cap_net_bind_service=+ep /usr/bin/caddy
+  mkdir -p /config/caddy /data/caddy /etc/caddy /usr/share/caddy; \
+  setcap cap_net_bind_service=+ep /usr/bin/caddy
 ENV XDG_CONFIG_HOME=/config
 ENV XDG_DATA_HOME=/data
 VOLUME /config

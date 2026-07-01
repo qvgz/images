@@ -3,8 +3,8 @@ ARG VERSION
 ARG TARGETOS
 ARG TARGETARCH
 ENV CGO_ENABLED=0 \
-    GOOS=$TARGETOS \
-    GOARCH=$TARGETARCH
+  GOOS=$TARGETOS \
+  GOARCH=$TARGETARCH
 WORKDIR /src
 RUN apk add --no-cache git
 RUN git clone --branch ${VERSION} --depth 1 https://github.com/ochinchina/supervisord.git .
