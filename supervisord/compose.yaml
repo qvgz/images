@@ -1,0 +1,17 @@
+services:
+  supervisord:
+    image: qvgz/supervisord:latest
+    container_name: supervisord
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+    - 127.0.0.1:9001:9001 # Web UI
+    volumes:
+    - ./supervisord.conf:/etc/supervisord.conf:ro
+    # - ./supervisor.d:/etc/supervisor.d:ro
+    healthcheck:
+      test: ["CMD", "supervisord", "ctl", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
