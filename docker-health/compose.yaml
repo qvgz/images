@@ -9,6 +9,8 @@ services:
       INTERVAL: 60
       DOCKER_TIMEOUT: 60
       RESTART_MAX: 3
+      # 通知 exited 容器（不重启），默认关闭
+      # NOTIFY_EXITED: "true"
       # 通知命令，可选；变量见 README。compose 中 $$ 表示字面 $，>- 将多行折叠为一行
       # CMD_TIMEOUT: 30
       # CMD: >-
