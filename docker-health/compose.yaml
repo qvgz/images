@@ -8,19 +8,24 @@ services:
       TZ: Asia/Shanghai
       INTERVAL: 60
       DOCKER_TIMEOUT: 60
-      # 事件回调，可选；变量见 README
-      # CMD: 'curl -fsS -m 10 -d "$$CONTAINER_NAME $$CONTAINER_EVENT $$RESTART_RESULT" https://example.com/webhook'
+      RESTART_MAX: 3
+      # 通知命令，可选；变量见 README。compose 中 $$ 表示字面 $，>- 将多行折叠为一行
+      # CMD_TIMEOUT: 30
+      # CMD: >-
+      #   curl -fsS -m 10
+      #   --data-urlencode "subject=docker-health $$HOST_NAME $$CONTAINER_NAME $$EVENT"
+      #   --data-urlencode "content=$$MESSAGE"
+      #   http://127.0.0.1:8080/
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+    - /var/run/docker.sock:/var/run/docker.sock
     labels:
       docker-health: "false"
-
-  # 被检查容器示例：需配置 healthcheck
-  # app:
-  #   image: nginx:alpine
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
-  #     interval: 30s
-  #     timeout: 5s
-  #     retries: 3
+      # 被检查容器示例：需配置 healthcheck
+      # app:
+      #   image: nginx:alpine
+      #   restart: unless-stopped
+      #   healthcheck:
+      #     test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      #     interval: 30s
+      #     timeout: 5s
+      #     retries: 3

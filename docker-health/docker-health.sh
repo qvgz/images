@@ -1,167 +1,135 @@
 #!/usr/bin/env bash
-# Docker 容器健康检查
-# 容器内常驻，每 INTERVAL 秒检查一轮；INTERVAL=0 时仅检查一轮并以本轮结果退出。
+# docker-health：重启 running 且 unhealthy 的容器（每个最多 RESTART_MAX 次），重启与恢复时执行 CMD 通知。
+# 每 INTERVAL 秒检查一轮；INTERVAL=0 时只检查一轮，有错误则退出码非零。
 
 set -u
 
-state_dir=${HEALTH_STATE_DIR:-/tmp/docker-health-state}
-log_file=${HEALTH_LOG_FILE:-/dev/stdout}
-cmd=${CMD:-}
-docker_timeout=${DOCKER_TIMEOUT:-60}
 interval=${INTERVAL:-60}
-timeout_file=$state_dir/timeouts
+restart_max=${RESTART_MAX:-3}
+docker_timeout=${DOCKER_TIMEOUT:-60}
+cmd=${CMD:-}
+cmd_timeout=${CMD_TIMEOUT:-30}
+# 状态文件按容器完整 ID 命名，内容：<已重启次数> <首次重启时间戳> <首次重启时间>
+state_dir=/tmp/docker-health
 
-case "$interval" in ''|*[!0-9]*) printf '无效的 INTERVAL：%s\n' "$interval" >&2; exit 1 ;; esac
-for dependency in docker timeout; do
-    if ! command -v "$dependency" >/dev/null 2>&1; then
-        printf '缺少必要命令：%s\n' "$dependency" >&2
-        exit 1
-    fi
-done
-if ! timeout "$docker_timeout" docker version --format '{{.Server.Version}}' >/dev/null; then
-    echo 'docker 不可用，退出' >&2
+check_int() {
+    case "$2" in ''|*[!0-9]*) ;; *) [ "$2" -ge "$3" ] && return 0 ;; esac
+    printf '无效的 %s：%s\n' "$1" "$2" >&2
     exit 1
-fi
+}
+check_int INTERVAL "$interval" 0
+check_int RESTART_MAX "$restart_max" 1
+check_int DOCKER_TIMEOUT "$docker_timeout" 1
+check_int CMD_TIMEOUT "$cmd_timeout" 1
+
+now() { date '+%Y-%m-%dT%H:%M:%S%z'; }
+log() { printf '%s %s\n' "$(now)" "$*"; }
+dk() { timeout "$docker_timeout" docker "$@" </dev/null; }
+
+host_name=$(dk info --format '{{.Name}}') || { echo 'docker 不可用，退出' >&2; exit 1; }
 mkdir -p "$state_dir" || exit 1
-# fd 3 指向日志，命令替换内的事件也能写到日志而不被捕获。
-exec 3>>"$log_file" || exit 1
 
-write_attempts() {
-    local file=$1 value=$2 tmp=$1.tmp.$$
-    if printf '%s\n' "$value" >"$tmp" && mv -f -- "$tmp" "$file"; then return 0; fi
-    rm -f -- "$tmp"
-    return 1
+# 健康检查日志各条输出以 \x1e 分隔，取最后一条作为 HEALTH_OUTPUT。
+inspect_format='{{.Name}}|{{.Config.Image}}|{{index .Config.Labels "docker-health"}}|{{.State.Status}}|{{with .State.Health}}{{.Status}}|{{.FailingStreak}}{{range .Log}}{{"\x1e"}}{{.Output}}{{end}}{{else}}none|0{{end}}'
+
+inspect() {
+    local info head
+    info=$(dk inspect --type container --format "$inspect_format" "$id") || return 1
+    head=${info%%$'\x1e'*}
+    IFS='|' read -r name image label status health streak <<<"$head"
+    name=${name#/}
+    health_output=''
+    [ "$head" = "$info" ] || health_output=${info##*$'\x1e'}
+    health_output=${health_output%$'\n'}
+    health_output=${health_output:0:1000}
 }
 
-read_attempts() {
-    attempts=0
-    if [ -f "$state_file" ]; then
-        read -r attempts < "$state_file" || attempts=0
-    fi
-    case "$attempts" in 0|1|2|3) return 0 ;; esac
-    printf '无效的重启计数文件：%s\n' "$state_file" >&2
-    return 1
-}
-
-run_cmd() {
+# 执行回调；输出被捕获，成功只记结果，失败附完整输出。变量说明见 README。
+notify() {
     [ -n "$cmd" ] || return 0
-    env CONTAINER_NAME="$container_name" CONTAINER_ID="$container_id" "$@" sh -c "$cmd" && return 0
-    printf '容器 %s 的 CMD 执行失败\n' "$container_name" >&2
+    local output rc result
+    output=$(EVENT="$event" EVENT_TIME="$event_time" HOST_NAME="$host_name" \
+        CONTAINER_ID="$id" CONTAINER_NAME="$name" CONTAINER_IMAGE="$image" \
+        HEALTH_STATUS="$health" HEALTH_OUTPUT="$health_output" FAILING_STREAK="$streak" \
+        RESTART_ATTEMPT="$attempts" RESTART_MAX="$restart_max" RESTART_RESULT="$restart_result" \
+        FIRST_RESTART_TIME="$first_time" DOWNTIME_SECONDS="$downtime" MESSAGE="$message" \
+        timeout -k 5 "$cmd_timeout" sh -c "$cmd" 2>&1 </dev/null)
+    rc=$?
+    if [ "$rc" -eq 0 ]; then
+        log "event=$event container=$name cmd=success"
+        return 0
+    fi
+    case "$rc" in 124|137) result=timeout ;; *) result=failed ;; esac
+    log "event=$event container=$name cmd=$result code=$rc output:"
+    printf '%s\n' "$output"
     return 1
 }
 
-# 连续超时计数跨轮保存；超过 3 次只记日志不再回调，docker 恢复响应后发恢复通知并清零。
-on_timeout() {
-    local event_time count=0
-    [ -f "$timeout_file" ] && { read -r count < "$timeout_file" || count=0; }
-    count=$((count + 1))
-    write_attempts "$timeout_file" "$count"
-    event_time=$(date '+%Y-%m-%dT%H:%M:%S%z')
-    printf '%s container=%s id=%s event=timeout command="%s" count=%s\n' \
-        "$event_time" "$container_name" "$container_id" "$1" "$count" >&3
-    [ "$count" -le 3 ] || return 0
-    run_cmd EVENT_TIME="$event_time" CONTAINER_EVENT=timeout DOCKER_COMMAND="$1" RECOVERY_TIME='' \
-        RESTART_TIME='' RESTART_ATTEMPT=0 RESTART_RESULT='' CONTAINER_STATUS='' >&3
-}
+# 处理单个容器：unhealthy 则重启，有重启记录且已 healthy 则记为恢复；其他状态（starting、exited 等）等待下一轮。
+handle() {
+    id=$1
+    local state_file=$state_dir/$1 first_epoch=''
+    attempts=0 first_time='' restart_result='' downtime=''
+    [ -f "$state_file" ] && read -r attempts first_epoch first_time <"$state_file"
+    case "$attempts" in ''|*[!0-9]*) attempts=0 ;; esac
+    if ! inspect; then
+        log "container=$id error=inspect_failed"
+        return 1
+    fi
+    case "$label" in false|False|FALSE) return 0 ;; esac
 
-on_docker_ok() {
-    [ -f "$timeout_file" ] || return 0
-    local event_time count=0 container_name='' container_id=''
-    read -r count < "$timeout_file" || count=0
-    rm -f -- "$timeout_file" || return 1
-    event_time=$(date '+%Y-%m-%dT%H:%M:%S%z')
-    printf '%s event=docker_recovered timeouts=%s\n' "$event_time" "$count" >&3
-    run_cmd EVENT_TIME="$event_time" CONTAINER_EVENT=docker_recovered RECOVERY_TIME="$event_time" \
-        RESTART_TIME='' RESTART_ATTEMPT=0 RESTART_RESULT='' CONTAINER_STATUS='' >&3
-}
-
-# 查询类 docker 命令，第一个参数为事件中的命令名；timeout 超时返回 124。
-dk() {
-    local name=$1 rc
-    shift
-    timeout "$docker_timeout" docker "$@"
-    rc=$?
-    if [ "$rc" -eq 124 ]; then on_timeout "$name"; else on_docker_ok; fi
-    return "$rc"
-}
-
-# 单轮检查，需在子 shell 中运行：exit 只结束本轮。
-check_once() {
-    result=0
-    container_id='' container_name=''
-
-    # 只取运行中且 unhealthy 的容器；退出的容器由 restart 策略拉起，人工停止的保持停止。
-    unhealthy=$(dk 'docker ps' ps --filter status=running --filter health=unhealthy --no-trunc \
-        --format '{{.ID}} {{.Names}} {{.Label "docker-health"}}') || exit 1
-    while read -r container_id container_name label; do
-        [ -n "$container_id" ] || continue
-        case "$label" in false|False) continue ;; esac
-        result=1
-        state_file=$state_dir/$container_id
-        read_attempts || continue
-        [ "$attempts" -lt 3 ] || continue
-        # 先记录次数，失败的重启也占用额度，防止持续异常无限重试。
+    if [ "$status $health" = 'running unhealthy' ]; then
+        [ "$attempts" -lt "$restart_max" ] || return 0
         attempts=$((attempts + 1))
-        write_attempts "$state_file" "$attempts" || continue
-        # restart 超时多为容器停止慢，只记为重启结果，不计入 docker 超时。
-        timeout "$docker_timeout" docker restart "$container_id" >/dev/null
-        case $? in
-            0) restart_result=success ;;
-            124) restart_result=timeout ;;
-            *) restart_result=failed ;;
-        esac
-        restart_time=$(date '+%Y-%m-%dT%H:%M:%S%z')
-        printf '%s container=%s attempt=%s result=%s status="unhealthy"\n' \
-            "$restart_time" "$container_name" "$attempts" "$restart_result" >> "$log_file"
-        run_cmd EVENT_TIME="$restart_time" CONTAINER_EVENT=restart RECOVERY_TIME='' \
-            RESTART_TIME="$restart_time" RESTART_ATTEMPT="$attempts" \
-            RESTART_RESULT="$restart_result" CONTAINER_STATUS=unhealthy
-    done <<EOF_UNHEALTHY
-$unhealthy
-EOF_UNHEALTHY
-
-    # 恢复检查只针对有重启记录的容器；容器已删除则清理其状态文件。
-    container_id='' container_name=''
-    all_ids=$(dk 'docker ps -a' ps -aq --no-trunc) || exit 1
-    for state_file in "$state_dir"/*; do
-        container_id=${state_file##*/}
-        case "$container_id" in timeouts|*.tmp.*|'*') continue ;; esac
-        case "$all_ids" in *"$container_id"*) ;; *)
-            rm -f -- "$state_file" || result=1
-            continue
-            ;;
-        esac
-        container_name=''
-        status=$(dk 'docker inspect' inspect --format '{{.Name}} {{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id") || {
-            result=1
-            continue
-        }
-        container_name=${status%% *}
-        container_name=${container_name#/}
-        status=${status#* }
-        [ "$status" = 'running healthy' ] || continue
-        read_attempts || { result=1; continue; }
-        if [ "$attempts" -gt 0 ]; then
-            recovery_time=$(date '+%Y-%m-%dT%H:%M:%S%z')
-            # 日志写入成功后才删除记录，避免写入失败后丢失恢复事件。
-            if ! printf '%s container=%s event=recovered status="healthy"\n' \
-                "$recovery_time" "$container_name" >> "$log_file"; then
-                result=1
-                continue
-            fi
+        if [ "$attempts" -eq 1 ]; then
+            first_epoch=$(date +%s)
+            first_time=$(now)
         fi
-        rm -f -- "$state_file" || { result=1; continue; }
-        [ "$attempts" -gt 0 ] || continue
-        run_cmd EVENT_TIME="$recovery_time" CONTAINER_EVENT=recovered RECOVERY_TIME="$recovery_time" \
-            RESTART_TIME='' RESTART_ATTEMPT=0 RESTART_RESULT='' CONTAINER_STATUS=healthy || result=1
-    done
-    exit "$result"
+        # 先记次数再重启，失败的重启也占用额度。
+        printf '%s %s %s\n' "$attempts" "$first_epoch" "$first_time" >"$state_file" || return 1
+        dk restart "$id" >/dev/null
+        case $? in 0) restart_result=success ;; 124) restart_result=timeout ;; *) restart_result=failed ;; esac
+        event=restart
+        message="$host_name 容器 $name 不健康，第 $attempts/$restart_max 次重启：$restart_result"
+        [ "$attempts" -lt "$restart_max" ] || message="$message，已达上限，不再自动重启"
+    elif [ "$status $health" = 'running healthy' ] && [ "$attempts" -gt 0 ]; then
+        rm -f -- "$state_file" || return 1
+        downtime=$(($(date +%s) - ${first_epoch:-0}))
+        event=recovered
+        message="$host_name 容器 $name 已恢复健康，共重启 $attempts 次，距首次重启 $downtime 秒"
+    else
+        return 0
+    fi
+    event_time=$(now)
+    log "event=$event container=$name id=${id:0:12} attempt=$attempts/$restart_max" \
+        "${restart_result:+result=$restart_result}${downtime:+downtime=${downtime}s}"
+    notify
 }
 
-# 作为 PID 1 运行时需显式处理信号；检查与 sleep 均放后台 wait，以便及时响应 docker stop。
+check_once() {
+    local all unhealthy file errors=0
+    all=$(dk ps -aq --no-trunc) || { log 'error=docker_ps_failed'; return 1; }
+    unhealthy=$(dk ps -q --no-trunc --filter status=running --filter health=unhealthy) || {
+        log 'error=docker_ps_failed'
+        return 1
+    }
+    # 容器已删除则丢弃其记录。
+    for file in "$state_dir"/*; do
+        [ -f "$file" ] || continue
+        grep -qxF "${file##*/}" <<<"$all" || rm -f -- "$file"
+    done
+    # 待处理：当前 unhealthy 的容器 + 有重启记录的容器（用于恢复检查）。
+    for id in $({ printf '%s\n' "$unhealthy"; ls "$state_dir"; } | sort -u); do
+        handle "$id" || errors=1
+    done
+    return "$errors"
+}
+
+# 作为 PID 1 需显式处理信号；检查与 sleep 放后台 wait，以便及时响应 docker stop。
 trap 'exit 0' TERM INT
+log "start host=$host_name interval=$interval restart_max=$restart_max"
 while :; do
-    ( check_once ) &
+    check_once &
     wait $!
     rc=$?
     [ "$interval" -gt 0 ] || exit "$rc"
