@@ -1,0 +1,26 @@
+services:
+  docker-health:
+    image: qvgz/docker-health:latest
+    build: .
+    container_name: docker-health
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      INTERVAL: 60
+      DOCKER_TIMEOUT: 60
+      # 事件回调，可选；变量见 README
+      # CMD: 'curl -fsS -m 10 -d "$$CONTAINER_NAME $$CONTAINER_EVENT $$RESTART_RESULT" https://example.com/webhook'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      docker-health: "false"
+
+  # 被检查容器示例：需配置 healthcheck
+  # app:
+  #   image: nginx:alpine
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 3
