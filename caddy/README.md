@@ -9,8 +9,6 @@
 
 添加插件如下：
 + [Cloudflare module for Caddy](https://github.com/caddy-dns/cloudflare)
-+ [GoDaddy module for Caddy](https://github.com/caddy-dns/godaddy)
-+ [Alibaba Cloud DNS (AliDNS) module for Caddy](https://github.com/caddy-dns/alidns)
 
 参考：
 [caddy-docker](https://github.com/caddyserver/caddy-docker/tree/master)
