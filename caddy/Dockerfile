@@ -3,20 +3,19 @@ ARG TARGETOS
 ARG TARGETARCH
 ARG VERSION
 WORKDIR /build
-RUN apk add --no-cache git
-RUN CGO_ENABLED=0 go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH /go/bin/xcaddy build ${VERSION} \
-  --output /usr/bin/caddy \
+RUN apk add --no-cache git mailcap \
+  && CGO_ENABLED=0 GOOS= GOARCH= go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH /go/bin/xcaddy build ${VERSION} \
+  --output /rootfs/usr/bin/caddy \
   --with github.com/caddy-dns/cloudflare
+# distroless 无 shell，在构建阶段准备目录与权限
+RUN mkdir -p /rootfs/config/caddy /rootfs/data/caddy /rootfs/etc/caddy /rootfs/usr/share/caddy \
+  && cp /etc/mime.types /rootfs/etc/mime.types \
+  && chown -R 65532:65532 /rootfs/config /rootfs/data
 
-FROM alpine:latest
-RUN apk add --no-cache ca-certificates mailcap tzdata
-COPY --from=builder /usr/bin/caddy /usr/bin/caddy
-RUN set -eux; \
-  mkdir -p /config/caddy /data/caddy /etc/caddy /usr/share/caddy; \
-  apk add --no-cache --virtual .setcap libcap-utils; \
-  setcap cap_net_bind_service=+ep /usr/bin/caddy; \
-  apk del --no-network .setcap
+FROM gcr.io/distroless/static:nonroot
+COPY --from=builder /rootfs/ /
+RUN ["caddy", "version"]
 ENV XDG_CONFIG_HOME=/config
 ENV XDG_DATA_HOME=/data
 VOLUME /config

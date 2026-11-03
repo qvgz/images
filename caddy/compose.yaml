@@ -1,0 +1,21 @@
+services:
+  caddy:
+    image: qvgz/caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      # CF_API_TOKEN: xxx # Cloudflare DNS 验证时需要
+    ports:
+    - 80:80
+    - 443:443
+    - 443:443/udp
+    volumes:
+    - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    - ./site:/usr/share/caddy:ro
+    - data:/data
+    - config:/config
+
+volumes:
+  data:
+  config:

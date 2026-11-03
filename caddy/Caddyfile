@@ -1,0 +1,16 @@
+{
+	email me@example.com
+	# 使用 Cloudflare DNS 验证签发证书（可签泛域名、无需开放 80）
+	# acme_dns cloudflare {env.CF_API_TOKEN}
+}
+
+example.com {
+	encode
+	root * /usr/share/caddy
+	file_server
+}
+
+# 反向代理示例
+# app.example.com {
+# 	reverse_proxy app:8080
+# }
