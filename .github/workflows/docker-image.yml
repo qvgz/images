@@ -33,10 +33,6 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
 
-    - name: Set up QEMU
-      if: steps.check_version.outputs.VERSION != steps.check_version.outputs.EXISTS
-      uses: docker/setup-qemu-action@v4
-
     - name: Set up Docker Buildx
       if: steps.check_version.outputs.VERSION != steps.check_version.outputs.EXISTS
       uses: docker/setup-buildx-action@v4
@@ -55,11 +51,9 @@ jobs:
         context: ./${{ matrix.image_name }}
         file: ./${{ matrix.image_name }}/Dockerfile
         push: true
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         build-args: |
           VERSION=${{ steps.check_version.outputs.VERSION }}
         tags: |
           ${{ matrix.docker_repo }}:latest
           ${{ matrix.docker_repo }}:${{ steps.check_version.outputs.VERSION }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
