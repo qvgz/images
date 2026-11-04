@@ -1,0 +1,14 @@
+# 一次性任务：docker compose run --rm rdap example.com
+#            docker compose run --rm rdap -d
+services:
+  rdap:
+    image: qvgz/rdap:latest
+    build: .
+    # 报告属主与宿主用户一致，按需修改
+    user: "1000:1000"
+    environment:
+      TZ: Asia/Shanghai
+      # RDAP_QUERY_INTERVAL: 3
+    volumes:
+    - ./data:/data
+    command: ["-d"]

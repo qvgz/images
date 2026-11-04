@@ -1,8 +1,15 @@
-name: 构建推送 docker-health
+name: 手动构建推送
 
 on:
   workflow_dispatch:
     inputs:
+      image:
+        description: "镜像"
+        required: true
+        type: choice
+        options:
+        - docker-health
+        - rdap
       version:
         description: "额外版本标签（可选），始终推送 latest"
         required: false
@@ -27,10 +34,10 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v7
       with:
-        context: ./docker-health
-        file: ./docker-health/Dockerfile
+        context: ./${{ inputs.image }}
+        file: ./${{ inputs.image }}/Dockerfile
         push: true
         platforms: linux/amd64
         tags: |
-          qvgz/docker-health:latest
-          ${{ inputs.version && format('qvgz/docker-health:{0}', inputs.version) || '' }}
+          qvgz/${{ inputs.image }}:latest
+          ${{ inputs.version && format('qvgz/{0}:{1}', inputs.image, inputs.version) || '' }}
