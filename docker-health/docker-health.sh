@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# docker-health：重启 running 且 unhealthy 的容器（每个最多 RESTART_MAX 次），重启与恢复时执行 CMD 通知。
+# docker-health：重启 running 且 unhealthy 的容器（每个最多 RESTART_MAX 次），首次重启与恢复时各执行一次 CMD 通知。
 # NOTIFY_EXITED=true 时，exited 容器只通知一次不重启，重新运行后再通知一次。
 # 每 INTERVAL 秒检查一轮；INTERVAL=0 时只检查一轮，有错误则退出码非零。
 
@@ -130,6 +130,8 @@ handle() {
     fi
     event_time=$(now)
     log "event=$event container=$name id=${id:0:12} $detail"
+    # 同一故障只在首次重启时通知，后续重启只记日志；是否恢复以 recovered 通知为准。
+    [ "$event" = restart ] && [ "$attempts" -gt 1 ] && return 0
     notify
 }
 

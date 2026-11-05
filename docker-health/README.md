@@ -2,7 +2,7 @@
 
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)](https://hub.docker.com/r/qvgz/docker-health)
 
-常驻容器：发现 running 且 unhealthy 的容器即重启（每个最多 `RESTART_MAX` 次），重启与恢复时执行 `CMD` 通知；可选通知 exited 容器（不重启）。示例见 [compose.yaml](./compose.yaml)。
+常驻容器：发现 running 且 unhealthy 的容器即重启（每个最多 `RESTART_MAX` 次），首次重启与恢复时各执行一次 `CMD` 通知；可选通知 exited 容器（不重启）。示例见 [compose.yaml](./compose.yaml)。
 
 ```bash
 docker run -d --name docker-health --restart unless-stopped \
@@ -30,7 +30,7 @@ docker run -d --name docker-health --restart unless-stopped \
 
 每轮：
 
-1. 对 running 且 unhealthy 的容器：未达上限则先记次数再 `docker restart`（失败也计数），发送 `restart` 通知；达上限后不再处理。
+1. 对 running 且 unhealthy 的容器：未达上限则先记次数再 `docker restart`（失败也计数）；同一故障只在第 1 次重启时发送 `restart` 通知，后续重启只记日志；达上限后不再处理。
 2. 对有重启记录的容器：变为 running 且 healthy 时发送 `recovered` 通知并清零；容器已删除则丢弃记录；其他状态（starting 等）等待下一轮。
 3. `NOTIFY_EXITED=true` 时，对 exited 容器（含人工停止）：不重启，只发送一次 `exited` 通知；重新 running 且 healthy（无 healthcheck 则 running 即可）时发送 `exited_recovered` 通知；仍为 unhealthy 时先走重启流程。
 
@@ -64,8 +64,8 @@ CMD 输出被捕获，成功时不写入日志。
 | `HEALTH_STATUS` | `unhealthy` | `healthy` | 当前健康状态 |
 | `HEALTH_OUTPUT` | ✓ | ✓ | 最近一次健康检查输出（截断至 1000 字符） |
 | `FAILING_STREAK` | ✓ | ✓ | 连续失败次数 |
-| `RESTART_ATTEMPT` / `RESTART_MAX` | 本次是第几次 | 共重启次数 | 及上限 |
-| `RESTART_RESULT` | `success` / `failed` / `timeout` | 空 | 本次重启结果 |
+| `RESTART_ATTEMPT` / `RESTART_MAX` | `1` | 共重启次数 | 及上限 |
+| `RESTART_RESULT` | `success` / `failed` / `timeout` | 空 | 首次重启结果 |
 | `FIRST_RESTART_TIME` | ✓ | ✓ | 本轮故障首次重启时间 |
 | `DOWNTIME_SECONDS` | 空 | ✓ | 首次重启到恢复的秒数 |
 | `CONTAINER_STATUS` | ✓ | ✓ | 容器状态（running / exited 等） |
