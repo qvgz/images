@@ -9,6 +9,7 @@ on:
         type: choice
         options:
         - docker-health
+        - log-clean
         - rdap
         - watchexec
       version:
