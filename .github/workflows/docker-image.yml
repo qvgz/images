@@ -18,6 +18,9 @@ jobs:
         - image_name: supervisord
           upstream_repo: ochinchina/supervisord
           docker_repo: qvgz/supervisord
+        - image_name: watchexec
+          upstream_repo: watchexec/watchexec
+          docker_repo: qvgz/watchexec
 
     steps:
     - name: Checkout

@@ -10,3 +10,4 @@ actions 每月 1 号自动构建最新版本镜像推送至 [Docker Hub](https:/
 | [supervisord](./supervisord) | Go 版 supervisord 进程管理器 |
 | [docker-health](./docker-health) | 自动重启 unhealthy 容器并通知 |
 | [rdap](./rdap) | WHOIS/RDAP 查询域名到期时间 |
+| [watchexec](./watchexec) | 监听文件变更执行命令 |

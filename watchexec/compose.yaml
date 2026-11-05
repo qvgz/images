@@ -1,0 +1,28 @@
+services:
+  watchexec:
+    image: qvgz/watchexec:latest
+    build: .
+    container_name: watchexec
+    restart: unless-stopped
+    environment:
+      # 监听路径，多个用空白分隔；需挂载进容器
+      WATCH: /dae
+      # 自首个变更起 60 秒内只执行一次，窗口结束时执行
+      DEBOUNCE: 60
+      CMD: docker exec dae dae reload
+      # CMD_TIMEOUT: 60
+      # 追加忽略，空白分隔，gitignore 语法；.DS_Store 始终忽略
+      # IGNORE: "*.swp *~ cache logs/"
+      # 失败通知，可选；compose 中 $$ 表示字面 $，>- 将多行折叠为一行
+      # FAIL_CMD: >-
+      #   curl -fsS -m 10
+      #   --data-urlencode "target_group=it"
+      #   --data-urlencode "subject=$$MESSAGE"
+      #   --data-urlencode "content=$$OUTPUT"
+      #   http://192.168.3.2:9529/
+      # FAIL_CMD_TIMEOUT: 60
+    volumes:
+    - /etc/dae:/dae:ro
+    - /var/run/docker.sock:/var/run/docker.sock
+    # 额外 watchexec 选项，可选：-e 只监听扩展名，-f 只监听匹配文件
+    # command: ["-e", "dae"]

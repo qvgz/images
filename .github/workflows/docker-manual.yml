@@ -10,8 +10,9 @@ on:
         options:
         - docker-health
         - rdap
+        - watchexec
       version:
-        description: "额外版本标签（可选），始终推送 latest"
+        description: "额外版本标签（可选），始终推送 latest；同时作为构建参数 VERSION（watchexec 为上游 tag，如 v2.8.0，空则最新）"
         required: false
         default: ""
 
@@ -38,6 +39,8 @@ jobs:
         file: ./${{ inputs.image }}/Dockerfile
         push: true
         platforms: linux/amd64
+        build-args: |
+          VERSION=${{ inputs.version }}
         tags: |
           qvgz/${{ inputs.image }}:latest
           ${{ inputs.version && format('qvgz/{0}:{1}', inputs.image, inputs.version) || '' }}
