@@ -11,6 +11,7 @@ on:
         - docker-health
         - docker-image-clean
         - log-clean
+        - log-trigger
         - rdap
         - watchexec
       version:
