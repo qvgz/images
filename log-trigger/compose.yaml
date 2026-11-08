@@ -1,0 +1,25 @@
+services:
+  log-trigger:
+    image: qvgz/log-trigger:latest
+    build: .
+    container_name: log-trigger
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      # 容器内路径；须挂载所在目录（非单个文件），否则宿主轮转后失效
+      FILE: /logs/app.log
+      PATTERN: OutOfMemory
+      # 60 秒内命中 10 次算一次触发，5 分钟内只执行一次
+      HITS: 10
+      WINDOW: 60
+      SUPPRESS: 300
+      # TIMEOUT 应大于 curl -m
+      TIMEOUT: 60
+      # compose 中 $$ 表示字面 $，>- 将多行折叠为一行；可用 $$FILE、$$MATCH_LINE
+      CMD: >-
+        curl -fsS -m 10
+        --data-urlencode "subject=log-trigger $$FILE"
+        --data-urlencode "content=$$MATCH_LINE"
+        http://127.0.0.1:8080/
+    volumes:
+    - /var/log/app:/logs:ro

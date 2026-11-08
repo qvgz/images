@@ -2,7 +2,7 @@
 
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)](https://hub.docker.com/r/qvgz/log-trigger)
 
-常驻任务：监控文件新增行，匹配字符串（支持 `*` `?` 通配）在时间窗口内达到次数时执行命令，带抑制时间。脚本构建时取自上游 [qvgz/sh ops/log-trigger.sh](https://github.com/qvgz/sh/blob/master/ops/log-trigger.sh)，说明见 [log-trigger.sh.md](https://github.com/qvgz/sh/blob/master/ops/log-trigger.sh.md)。
+常驻任务：监控文件新增行，匹配字符串（支持 `*` `?` 通配）在时间窗口内达到次数时执行命令，带抑制时间。脚本构建时取自上游 [qvgz/sh ops/log-trigger.sh](https://github.com/qvgz/sh/blob/master/ops/log-trigger.sh)，说明见 [log-trigger.sh.md](https://github.com/qvgz/sh/blob/master/ops/log-trigger.sh.md)。示例见 [compose.yaml](./compose.yaml)。
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
