@@ -1,0 +1,13 @@
+# 一次性任务：docker compose run --rm ssl-check example.com
+#            docker compose run --rm ssl-check -d
+services:
+  ssl-check:
+    image: qvgz/ssl-check:latest
+    build: .
+    # 报告属主与宿主用户一致，按需修改
+    user: "1000:1000"
+    # environment:
+    #   SSL_CHECK_QUERY_INTERVAL: 1
+    volumes:
+    - ./data:/data
+    command: ["-d"]

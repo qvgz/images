@@ -13,6 +13,7 @@ on:
         - log-clean
         - log-trigger
         - rdap
+        - ssl-check
         - watchexec
       version:
         description: "额外版本标签（可选），始终推送 latest；同时作为构建参数 VERSION（watchexec 为上游 tag，如 v2.8.0，空则最新）"
