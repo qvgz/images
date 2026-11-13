@@ -1,0 +1,21 @@
+services:
+  fail2ban:
+    image: qvgz/fail2ban:latest
+    container_name: fail2ban
+    restart: unless-stopped
+    # host 网络 + NET_ADMIN 才能改宿主机防火墙
+    network_mode: host
+    cap_add:
+    - NET_ADMIN
+    - NET_RAW
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+    - ./jail.d:/etc/fail2ban/jail.d:ro # sshd.local、nginx.local 示范，按需删减
+    # 自定义过滤器/动作，可选；*.local 覆盖同名 *.conf
+    # - ./filter.d/caddy.local:/etc/fail2ban/filter.d/caddy.local:ro
+    - /var/log:/var/log:ro
+    - data:/var/lib/fail2ban
+
+volumes:
+  data:

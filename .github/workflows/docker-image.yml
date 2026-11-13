@@ -15,6 +15,9 @@ jobs:
         - image_name: caddy
           upstream_repo: caddyserver/caddy
           docker_repo: qvgz/caddy
+        - image_name: fail2ban
+          upstream_repo: fail2ban/fail2ban
+          docker_repo: qvgz/fail2ban
         - image_name: supervisord
           upstream_repo: ochinchina/supervisord
           docker_repo: qvgz/supervisord

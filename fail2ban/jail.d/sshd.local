@@ -1,0 +1,13 @@
+[DEFAULT]
+# 白名单，空白分隔
+ignoreip = 127.0.0.1/8 ::1
+bantime = 1h
+findtime = 10m
+maxretry = 5
+# 防火墙后端：iptables（nft 兼容层）用 iptables-multiport，纯 nftables 用 nftables-multiport
+banaction = iptables-multiport
+
+[sshd]
+enabled = true
+backend = polling
+logpath = /var/log/auth.log

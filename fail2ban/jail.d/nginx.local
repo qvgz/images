@@ -1,0 +1,22 @@
+# 内置过滤器见 /etc/fail2ban/filter.d/nginx-*.conf
+# 默认日志 /var/log/nginx/*error.log、*access.log，无匹配文件时 jail 启动失败
+# nginx 在容器内且发布端口时，取消各 jail 的 chain 注释：INPUT 链对容器端口无效
+
+# Basic 认证失败
+[nginx-http-auth]
+enabled = true
+backend = polling
+# chain = DOCKER-USER
+
+# 扫描不存在的脚本、后台路径
+[nginx-botsearch]
+enabled = true
+backend = polling
+maxretry = 3
+# chain = DOCKER-USER
+
+# 400 错误请求，常见于扫描器
+[nginx-bad-request]
+enabled = true
+backend = polling
+# chain = DOCKER-USER
