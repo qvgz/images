@@ -1,0 +1,14 @@
+# 配合 filter.d/caddy-admin.conf，访问 /admin 一次即封禁
+[caddy-admin]
+enabled = true
+filter = caddy-admin
+backend = polling
+logpath = /var/log/caddy/*.log
+maxretry = 1
+#bantime = 1d
+bantime = -1
+# Caddy 在容器内发布端口：流量走 FORWARD，封禁写 DOCKER-USER 链
+# allports + protocol=all 同时拦 TCP 与 HTTP/3（UDP 443）；Caddy 在宿主机直接运行时删除这两行
+chain = DOCKER-USER
+banaction = iptables-allports
+protocol = all
